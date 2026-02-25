@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Unscripted Path</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Space Grotesk', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas {
+            background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 100%);
+            box-shadow: 0 0 50px rgba(100, 100, 255, 0.1);
+            border-radius: 16px;
+        }
+
+        /* Story Text that changes as you play */
+        #story-text {
+            position: absolute;
+            top: 15%;
+            width: 300px;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 1px;
+            pointer-events: none;
+            transition: opacity 1s ease-in-out;
+            z-index: 5;
+            text-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+
+        #score-container {
+            position: absolute;
+            top: 5%;
+            font-size: 2rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #ui-layer {
+            position: absolute;
+            width: 280px;
+            padding: 40px 20px;
+            background: rgba(15, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, #ff8a00, #e52e71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: #a0a0a0;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .pulse-text {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; text-shadow: 0 0 0px #fff; }
+            50% { opacity: 1; text-shadow: 0 0 10px #fff; }
+            100% { opacity: 0.3; text-shadow: 0 0 0px #fff; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="score-container">0</div>
+    <div id="story-text"></div>
+
+    <div id="ui-layer">
+        <div class="title" id="menu-title">The Unscripted Path</div>
+        <div class="subtitle" id="menu-subtitle">You are the spark.<br>Dodge the expectations. Build the journey.</div>
+        <div class="pulse-text" id="menu-action">Tap to Ignite</div>
+    </div>
+
+    <canvas id="gameCanvas" width="340" height="550"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const uiLayer = document.getElementById("ui-layer");
+    const menuTitle = document.getElementById("menu-title");
+    const menuSubtitle = document.getElementById("menu-subtitle");
+    const menuAction = document.getElementById("menu-action");
+    const scoreContainer = document.getElementById("score-container");
+    const storyText = document.getElementById("story-text");
+
+    let frames = 0;
+    let score = 0;
+    let gameActive = false;
+    let animationId;
+    let obstacles = [];
+    let particles = [];
+    let stars = [];
+
+    // The Narrative Phases based on her reel
+    const storyPhases = [
+        { score: 0, text: "Everyone said to be a doctor..." },
+        { score: 3, text: "The pressure is suffocating..." },
+        { score: 6, text: "But you don't want a script." },
+        { score: 10, text: "Taking the leap..." },
+        { score: 15, text: "Documenting the journey." },
+        { score: 20, text: "Building your own path." }
+    ];
+
+    const toxicWords = ["NEET", "EXPECTATIONS", "SOCIETY", "THE SCRIPT", "DOUBT", "LOG KYA KAHENGE"];
+
+    // Background Stars (Parallax effect)
+    for(let i=0; i<50; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2,
+            speed: Math.random() * 0.5 + 0.1
+        });
+    }
+
+    // The Player: A glowing Spark
+    const player = {
+        x: 60,
+        y: canvas.height / 2,
+        radius: 8,
+        velocity: 0,
+        gravity: 0.25,
+        jump: -5.5,
+        
+        draw() {
+            // Glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "#ff8a00";
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.closePath();
+            ctx.shadowBlur = 0; // Reset
+        },
+        
+        update() {
+            this.velocity += this.gravity;
+            this.y += this.velocity;
+            
+            // Add particle to trail
+            particles.push(new Particle(this.x, this.y));
+
+            if(this.y + this.radius >= canvas.height || this.y - this.radius <= 0) {
+                gameOver();
+            }
+        },
+        
+        flap() {
+            this.velocity = this.jump;
+        }
+    };
+
+    // Particle Trail Effect
+    class Particle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.random() * 4 + 2;
+            this.life = 1;
+        }
+        update() {
+            this.x -= 2; // Move left with the world
+            this.life -= 0.05; // Fade out
+        }
+        draw() {
+            ctx.fillStyle = `rgba(255, 138, 0, ${this.life})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    class Obstacle {
+        constructor() {
+            this.x = canvas.width;
+            this.width = 50;
+            this.gap = 160; 
+            this.topHeight = Math.random() * (canvas.height / 2.5) + 50;
+            this.bottomY = this.topHeight + this.gap;
+            this.bottomHeight = canvas.height - this.bottomY;
+            this.word = toxicWords[Math.floor(Math.random() * toxicWords.length)];
+            this.passed = false;
+        }
+
+        draw() {
+            // Draw gradient pillars
+            let grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+            grad.addColorStop(0, "#111");
+            grad.addColorStop(0.5, "#222");
+            grad.addColorStop(1, "#111");
+
+            ctx.fillStyle = grad; 
+            ctx.fillRect(this.x, 0, this.width, this.topHeight);
+            ctx.fillRect(this.x, this.bottomY, this.width, this.bottomHeight);
+
+            // Glowing Toxic Text
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ff0055";
+            ctx.fillStyle = "#ff4757"; 
+            ctx.font = "bold 12px 'Space Grotesk'";
+            ctx.fillText(this.word, this.x - 15, this.topHeight - 20);
+            ctx.shadowBlur = 0;
+        }
+
+        update() {
+            this.x -= 2.5; 
+
+            // Collision (using circle vs rectangle math approx)
+            if (
+                player.x + player.radius > this.x &&
+                player.x - player.radius < this.x + this.width &&
+                (player.y - player.radius < this.topHeight || player.y + player.radius > this.bottomY)
+            ) {
+                gameOver();
+            }
+
+            if (this.x + this.width < player.x - player.radius && !this.passed) {
+                score++;
+                scoreContainer.innerText = score;
+                this.passed = true;
+                updateStory();
+            }
+        }
+    }
+
+    function updateStory() {
+        // Find the current story phase
+        let currentPhase = storyPhases.slice().reverse().find(p => score >= p.score);
+        if (currentPhase && storyText.innerText !== currentPhase.text) {
+            storyText.style.opacity = 0; // Fade out
+            setTimeout(() => {
+                storyText.innerText = currentPhase.text;
+                storyText.style.opacity = 1; // Fade in
+            }, 500);
+        }
+    }
+
+    function drawBackground() {
+        ctx.fillStyle = "#ffffff";
+        stars.forEach(star => {
+            star.x -= star.speed;
+            if(star.x < 0) star.x = canvas.width;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function loop() {
+        if (!gameActive) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawBackground();
+
+        // Particles
+        particles.forEach((p, index) => {
+            p.update();
+            p.draw();
+            if(p.life <= 0) particles.splice(index, 1);
+        });
+        
+        player.draw();
+        player.update();
+        
+        if (frames % 120 === 0) {
+            obstacles.push(new Obstacle());
+        }
+
+        obstacles.forEach((obs, index) => {
+            obs.draw();
+            obs.update();
+            if (obs.x + obs.width < 0) {
+                obstacles.splice(index, 1);
+            }
+        });
+        
+        frames++;
+        animationId = requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("touchstart", handleInteraction, {passive: false});
+    window.addEventListener("mousedown", handleInteraction);
+
+    function handleInteraction(e) {
+        if(e.type === 'touchstart') e.preventDefault(); 
+        if (!gameActive) {
+            resetGame();
+            gameActive = true;
+            uiLayer.style.display = "none";
+            storyText.style.opacity = 1;
+            loop();
+        }
+        player.flap();
+    }
+
+    function resetGame() {
+        player.y = canvas.height / 2;
+        player.velocity = 0;
+        obstacles = [];
+        particles = [];
+        score = 0;
+        scoreContainer.innerText = score;
+        frames = 0;
+        storyText.innerText = storyPhases[0].text;
+    }
+
+    function gameOver() {
+        gameActive = false;
+        cancelAnimationFrame(animationId);
+        uiLayer.style.display = "block";
+        storyText.style.opacity = 0;
+        menuTitle.innerHTML = "The Script Caught You";
+        menuTitle.style.background = "linear-gradient(90deg, #ff0055, #ff4757)";
+        menuTitle.style.webkitBackgroundClip = "text";
+        menuSubtitle.innerHTML = "Taking a drop is hard.<br>Starting over is harder.<br>Don't stop now.";
+        menuAction.innerText = "Try Again";
+    }
+
+    // Init
+    resetGame();
+    drawBackground();
+    player.draw();
+</script>
+</body>
+</html>
