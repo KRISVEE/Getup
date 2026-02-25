@@ -3,367 +3,468 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Unscripted Path</title>
+    <title>The Unscripted Engine</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap');
 
+        :root {
+            --accent-color: #ff8a00;
+            --bg-dark: #050505;
+            --glass-bg: rgba(15, 15, 25, 0.7);
+        }
+
+        /* Fixes responsiveness for inputs */
+        * { box-sizing: border-box; } 
+
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #050505;
+            margin: 0; padding: 0;
+            background-color: var(--bg-dark);
             color: #ffffff;
             font-family: 'Space Grotesk', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            touch-action: none;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; width: 100vw;
+            overflow: hidden; touch-action: none;
         }
 
-        canvas {
-            background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 100%);
-            box-shadow: 0 0 50px rgba(100, 100, 255, 0.1);
-            border-radius: 16px;
-        }
-
-        /* Story Text that changes as you play */
-        #story-text {
+        .glass-panel {
             position: absolute;
-            top: 15%;
-            width: 300px;
-            text-align: center;
-            font-size: 1rem;
-            font-weight: 300;
-            color: rgba(255, 255, 255, 0.6);
-            letter-spacing: 1px;
-            pointer-events: none;
-            transition: opacity 1s ease-in-out;
-            z-index: 5;
-            text-shadow: 0 0 10px rgba(255,255,255,0.2);
-        }
-
-        #score-container {
-            position: absolute;
-            top: 5%;
-            font-size: 2rem;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.8);
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        #ui-layer {
-            position: absolute;
-            width: 280px;
-            padding: 40px 20px;
-            background: rgba(15, 15, 25, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            width: 90%; max-width: 360px;
+            padding: 30px 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             text-align: center;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-            pointer-events: none;
-            z-index: 10;
+            z-index: 20;
+            display: none; 
+            flex-direction: column; gap: 15px;
+            max-height: 95vh; overflow-y: auto;
         }
 
+        .active-panel { display: flex; }
+
+        h1, h2 { margin: 0; }
         .title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            background: linear-gradient(90deg, #ff8a00, #e52e71);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 1.5rem; font-weight: 700;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-color);
+            margin-bottom: 5px;
         }
 
-        .subtitle {
-            font-size: 0.95rem;
-            color: #a0a0a0;
-            line-height: 1.5;
-            margin-bottom: 25px;
+        input[type="text"], input[type="color"] {
+            width: 100%; padding: 12px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            outline: none; transition: 0.3s;
+        }
+        input[type="text"]:focus { border-color: var(--accent-color); }
+
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 8px;
+            background: var(--accent-color); color: #fff;
+            font-weight: 700; font-family: 'Space Grotesk', sans-serif;
+            cursor: pointer; font-size: 1rem;
+            box-shadow: 0 0 15px var(--accent-color);
+            transition: transform 0.1s, filter 0.3s;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        /* Outline button for secondary actions (Main Menu) */
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: none;
         }
 
-        .pulse-text {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            animation: pulse 2s infinite;
+        .toggle-container {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            font-size: 0.9rem; color: #a0a0a0; margin: 5px 0;
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.3; text-shadow: 0 0 0px #fff; }
-            50% { opacity: 1; text-shadow: 0 0 10px #fff; }
-            100% { opacity: 0.3; text-shadow: 0 0 0px #fff; }
+        #creator-options { display: none; flex-direction: column; gap: 10px; }
+
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5; display: none;
+        }
+        #score-display {
+            position: absolute; top: 8%; width: 100%; text-align: center;
+            font-size: 3rem; font-weight: 700; color: rgba(255,255,255,0.8);
+        }
+        #story-display {
+            position: absolute; top: 20%; width: 100%; text-align: center;
+            font-size: 1rem; color: rgba(255,255,255,0.6); transition: opacity 0.5s;
+        }
+
+        canvas { width: 100vw; height: 100vh; display: block; }
+        
+        #share-preview {
+            width: 100%; border-radius: 10px; margin-bottom: 5px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
     </style>
 </head>
 <body>
 
-    <div id="score-container">0</div>
-    <div id="story-text"></div>
+    <div id="setup-panel" class="glass-panel active-panel">
+        <div class="title">Define Your Journey</div>
+        <input type="text" id="input-name" placeholder="Your Name (Optional)">
+        <input type="text" id="input-pressure" placeholder="Escaping what? (e.g. Society, Exams, Fear)">
+        <input type="text" id="input-dream" placeholder="What is your goal? (e.g. Startup, Peace)">
+        
+        <div class="toggle-container">
+            <input type="checkbox" id="creator-toggle">
+            <label for="creator-toggle">Enable Creator Mode</label>
+        </div>
 
-    <div id="ui-layer">
-        <div class="title" id="menu-title">The Unscripted Path</div>
-        <div class="subtitle" id="menu-subtitle">You are the spark.<br>Dodge the expectations. Build the journey.</div>
-        <div class="pulse-text" id="menu-action">Tap to Ignite</div>
+        <div id="creator-options">
+            <input type="text" id="input-handle" placeholder="IG Handle (e.g. @prithvi.dll)">
+            <div style="display:flex; justify-content: space-between; align-items:center;">
+                <label style="font-size:0.8rem;">Brand Color:</label>
+                <input type="color" id="input-color" value="#ff8a00" style="width: 50px; padding:0; height: 35px;">
+            </div>
+        </div>
+
+        <button class="btn" id="btn-start">Ignite</button>
     </div>
 
-    <canvas id="gameCanvas" width="340" height="550"></canvas>
+    <div id="game-over-panel" class="glass-panel">
+        <div class="title" style="color: #ff4757; text-shadow: 0 0 10px #ff4757;">The Script Caught You</div>
+        <img id="share-preview" src="" alt="Share to IG">
+        <button class="btn" id="btn-download" style="background: #ffffff; color: #000; box-shadow: none;">Download Story Format</button>
+        <button class="btn" id="btn-restart">Try Again</button>
+        <button class="btn btn-outline" id="btn-menu">Main Menu</button>
+    </div>
+
+    <div id="hud">
+        <div id="score-display">0</div>
+        <div id="story-display"></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const uiLayer = document.getElementById("ui-layer");
-    const menuTitle = document.getElementById("menu-title");
-    const menuSubtitle = document.getElementById("menu-subtitle");
-    const menuAction = document.getElementById("menu-action");
-    const scoreContainer = document.getElementById("score-container");
-    const storyText = document.getElementById("story-text");
+    const Config = {
+        name: "Traveler",
+        pressures: ["The Script"], // Now an array!
+        dream: "Freedom",
+        isCreator: false,
+        handle: "",
+        color: "#ff8a00"
+    };
 
-    let frames = 0;
-    let score = 0;
-    let gameActive = false;
-    let animationId;
-    let obstacles = [];
-    let particles = [];
-    let stars = [];
-
-    // The Narrative Phases based on her reel
-    const storyPhases = [
-        { score: 0, text: "Everyone said to be a doctor..." },
-        { score: 3, text: "The pressure is suffocating..." },
-        { score: 6, text: "But you don't want a script." },
-        { score: 10, text: "Taking the leap..." },
-        { score: 15, text: "Documenting the journey." },
-        { score: 20, text: "Building your own path." }
-    ];
-
-    const toxicWords = ["NEET", "EXPECTATIONS", "SOCIETY", "THE SCRIPT", "DOUBT", "LOG KYA KAHENGE"];
-
-    // Background Stars (Parallax effect)
-    for(let i=0; i<50; i++) {
-        stars.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() * 2,
-            speed: Math.random() * 0.5 + 0.1
-        });
-    }
-
-    // The Player: A glowing Spark
-    const player = {
-        x: 60,
-        y: canvas.height / 2,
-        radius: 8,
-        velocity: 0,
-        gravity: 0.25,
-        jump: -5.5,
-        
-        draw() {
-            // Glow effect
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "#ff8a00";
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#fff";
-            ctx.fill();
-            ctx.closePath();
-            ctx.shadowBlur = 0; // Reset
+    const AudioSys = {
+        ctx: null,
+        init() {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
         },
-        
-        update() {
-            this.velocity += this.gravity;
-            this.y += this.velocity;
-            
-            // Add particle to trail
-            particles.push(new Particle(this.x, this.y));
-
-            if(this.y + this.radius >= canvas.height || this.y - this.radius <= 0) {
-                gameOver();
-            }
+        playJump() {
+            if(!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(500, this.ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.1);
         },
-        
-        flap() {
-            this.velocity = this.jump;
+        playCrash() {
+            if(!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.3);
         }
     };
 
-    // Particle Trail Effect
-    class Particle {
-        constructor(x, y) {
-            this.x = x;
-            this.y = y;
-            this.size = Math.random() * 4 + 2;
-            this.life = 1;
-        }
-        update() {
-            this.x -= 2; // Move left with the world
-            this.life -= 0.05; // Fade out
-        }
-        draw() {
-            ctx.fillStyle = `rgba(255, 138, 0, ${this.life})`;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
-        }
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     }
+    window.addEventListener('resize', resize);
+    resize();
 
-    class Obstacle {
-        constructor() {
-            this.x = canvas.width;
-            this.width = 50;
-            this.gap = 160; 
-            this.topHeight = Math.random() * (canvas.height / 2.5) + 50;
-            this.bottomY = this.topHeight + this.gap;
-            this.bottomHeight = canvas.height - this.bottomY;
-            this.word = toxicWords[Math.floor(Math.random() * toxicWords.length)];
-            this.passed = false;
-        }
+    const Engine = {
+        active: false, frames: 0, score: 0, difficultyMult: 1,
+        shakeTime: 0, nextSpawnDistance: 0,
+        particles: [], stars: [], obstacles: [],
+        
+        player: {
+            x: window.innerWidth * 0.2, y: window.innerHeight / 2, radius: 10,
+            vel: 0, grav: 0.35, jump: -6.5,
+            update() {
+                this.vel += this.grav; this.y += this.vel;
+                Engine.particles.push({ x: this.x, y: this.y, life: 1, size: Math.random()*3+2 });
+                if(this.y + this.radius > canvas.height || this.y < 0) Engine.crash();
+            },
+            draw() {
+                let glow = 15 + Math.sin(Engine.frames * 0.1) * 5;
+                ctx.shadowBlur = glow; ctx.shadowColor = Config.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = "#fff"; ctx.fill(); ctx.shadowBlur = 0;
+            },
+            flap() { this.vel = this.jump; AudioSys.playJump(); }
+        },
 
-        draw() {
-            // Draw gradient pillars
-            let grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-            grad.addColorStop(0, "#111");
-            grad.addColorStop(0.5, "#222");
-            grad.addColorStop(1, "#111");
+        initStars() {
+            this.stars = [];
+            for(let i=0; i<60; i++) this.stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2, speed: Math.random()*0.5 + 0.2 });
+        },
 
-            ctx.fillStyle = grad; 
-            ctx.fillRect(this.x, 0, this.width, this.topHeight);
-            ctx.fillRect(this.x, this.bottomY, this.width, this.bottomHeight);
+        spawnObstacle() {
+            const gap = Math.max(140, 220 - (this.score * 2.5)); 
+            const topH = Math.random() * (canvas.height / 2.5) + 50;
+            const w = window.innerWidth > 600 ? 60 : 45;
+            
+            // Pick a random word from the multiple pressures provided
+            const randomWord = Config.pressures[Math.floor(Math.random() * Config.pressures.length)];
 
-            // Glowing Toxic Text
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "#ff0055";
-            ctx.fillStyle = "#ff4757"; 
-            ctx.font = "bold 12px 'Space Grotesk'";
-            ctx.fillText(this.word, this.x - 15, this.topHeight - 20);
-            ctx.shadowBlur = 0;
-        }
+            this.obstacles.push({
+                x: canvas.width, w: w, topH: topH, bottomY: topH + gap, passed: false,
+                word: randomWord.toUpperCase()
+            });
+        },
 
-        update() {
-            this.x -= 2.5; 
-
-            // Collision (using circle vs rectangle math approx)
-            if (
-                player.x + player.radius > this.x &&
-                player.x - player.radius < this.x + this.width &&
-                (player.y - player.radius < this.topHeight || player.y + player.radius > this.bottomY)
-            ) {
-                gameOver();
+        loop() {
+            if(!Engine.active) return;
+            
+            ctx.save();
+            if(Engine.shakeTime > 0) {
+                const dx = (Math.random()-0.5)*10; const dy = (Math.random()-0.5)*10;
+                ctx.translate(dx, dy); Engine.shakeTime--;
             }
 
-            if (this.x + this.width < player.x - player.radius && !this.passed) {
-                score++;
-                scoreContainer.innerText = score;
-                this.passed = true;
-                updateStory();
-            }
-        }
-    }
+            let bgGrad = ctx.createLinearGradient(0,0,0,canvas.height);
+            bgGrad.addColorStop(0, "#0a0a1a"); bgGrad.addColorStop(1, "#1a1a2e");
+            ctx.fillStyle = bgGrad; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    function updateStory() {
-        // Find the current story phase
-        let currentPhase = storyPhases.slice().reverse().find(p => score >= p.score);
-        if (currentPhase && storyText.innerText !== currentPhase.text) {
-            storyText.style.opacity = 0; // Fade out
-            setTimeout(() => {
-                storyText.innerText = currentPhase.text;
-                storyText.style.opacity = 1; // Fade in
-            }, 500);
-        }
-    }
-
-    function drawBackground() {
-        ctx.fillStyle = "#ffffff";
-        stars.forEach(star => {
-            star.x -= star.speed;
-            if(star.x < 0) star.x = canvas.width;
-            ctx.globalAlpha = 0.5;
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle = "#fff";
+            Engine.stars.forEach(s => {
+                s.x -= s.speed * Engine.difficultyMult;
+                if(s.x < 0) s.x = canvas.width;
+                ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            });
             ctx.globalAlpha = 1;
-        });
-    }
 
-    function loop() {
-        if (!gameActive) return;
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        drawBackground();
+            Engine.particles.forEach((p, i) => {
+                p.x -= 2 * Engine.difficultyMult; p.life -= 0.05;
+                ctx.fillStyle = `rgba(${Config.color === '#ff8a00' ? '255,138,0' : '255,255,255'}, ${p.life})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                if(p.life <= 0) Engine.particles.splice(i, 1);
+            });
 
-        // Particles
-        particles.forEach((p, index) => {
-            p.update();
-            p.draw();
-            if(p.life <= 0) particles.splice(index, 1);
-        });
-        
-        player.draw();
-        player.update();
-        
-        if (frames % 120 === 0) {
-            obstacles.push(new Obstacle());
-        }
+            Engine.player.update();
+            Engine.player.draw();
 
-        obstacles.forEach((obs, index) => {
-            obs.draw();
-            obs.update();
-            if (obs.x + obs.width < 0) {
-                obstacles.splice(index, 1);
+            // FIX: DISTANCE-BASED SPAWNING (Fixes 120Hz overlapping bug)
+            let lastObs = Engine.obstacles[Engine.obstacles.length - 1];
+            if (!lastObs || (canvas.width - lastObs.x) > Engine.nextSpawnDistance) {
+                Engine.spawnObstacle();
+                // Randomize distance between pillars so it feels organic, but guarantee a safe minimum gap
+                Engine.nextSpawnDistance = Math.max(180, 260 - Engine.score * 2) + Math.random() * 80;
             }
-        });
-        
-        frames++;
-        animationId = requestAnimationFrame(loop);
-    }
 
-    window.addEventListener("touchstart", handleInteraction, {passive: false});
-    window.addEventListener("mousedown", handleInteraction);
+            Engine.obstacles.forEach((obs, i) => {
+                obs.x -= 3.5 * Engine.difficultyMult;
+                
+                let grad = ctx.createLinearGradient(obs.x, 0, obs.x+obs.w, 0);
+                grad.addColorStop(0, "#111"); grad.addColorStop(0.5, "#222"); grad.addColorStop(1, "#111");
+                ctx.fillStyle = grad;
+                ctx.fillRect(obs.x, 0, obs.w, obs.topH);
+                ctx.fillRect(obs.x, obs.bottomY, obs.w, canvas.height - obs.bottomY);
 
-    function handleInteraction(e) {
-        if(e.type === 'touchstart') e.preventDefault(); 
-        if (!gameActive) {
-            resetGame();
-            gameActive = true;
-            uiLayer.style.display = "none";
-            storyText.style.opacity = 1;
-            loop();
+                ctx.shadowBlur = 10; ctx.shadowColor = "#ff0055"; ctx.fillStyle = "#ff4757";
+                ctx.font = "bold 14px 'Space Grotesk'";
+                ctx.fillText(obs.word, obs.x - 10, obs.topH - 20); 
+                ctx.shadowBlur = 0;
+
+                if (Engine.player.x + Engine.player.radius > obs.x && 
+                    Engine.player.x - Engine.player.radius < obs.x + obs.w &&
+                    (Engine.player.y - Engine.player.radius < obs.topH || Engine.player.y + Engine.player.radius > obs.bottomY)) {
+                    Engine.crash();
+                }
+
+                if (obs.x + obs.w < Engine.player.x - Engine.player.radius && !obs.passed) {
+                    Engine.score++; document.getElementById('score-display').innerText = Engine.score;
+                    obs.passed = true;
+                    Engine.difficultyMult += 0.015; 
+                    
+                    for(let j=0; j<10; j++) Engine.particles.push({x: Engine.player.x, y: Engine.player.y, life: 1, size: Math.random()*5+2});
+                    UI.updateStory();
+                }
+
+                if (obs.x + obs.w < -100) Engine.obstacles.splice(i, 1);
+            });
+
+            ctx.restore();
+            Engine.frames++;
+            requestAnimationFrame(Engine.loop);
+        },
+
+        crash() {
+            Engine.active = false;
+            Engine.shakeTime = 15;
+            AudioSys.playCrash();
+            
+            ctx.save();
+            const dx = (Math.random()-0.5)*20; const dy = (Math.random()-0.5)*20;
+            ctx.translate(dx, dy);
+            ctx.fillStyle = "rgba(255,0,0,0.3)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.restore();
+
+            setTimeout(() => UI.showGameOver(), 500);
+        },
+
+        start() {
+            this.active = true; this.score = 0; this.frames = 0; this.difficultyMult = 1;
+            this.obstacles = []; this.particles = []; this.nextSpawnDistance = 0;
+            this.player.y = canvas.height / 2; this.player.vel = 0;
+            document.getElementById('score-display').innerText = 0;
+            this.initStars();
+            UI.updateStory(true);
+            AudioSys.init();
+            this.loop();
         }
-        player.flap();
-    }
+    };
 
-    function resetGame() {
-        player.y = canvas.height / 2;
-        player.velocity = 0;
-        obstacles = [];
-        particles = [];
-        score = 0;
-        scoreContainer.innerText = score;
-        frames = 0;
-        storyText.innerText = storyPhases[0].text;
-    }
+    const UI = {
+        setupPanel: document.getElementById('setup-panel'),
+        gameOverPanel: document.getElementById('game-over-panel'),
+        hud: document.getElementById('hud'),
+        storyDisplay: document.getElementById('story-display'),
 
-    function gameOver() {
-        gameActive = false;
-        cancelAnimationFrame(animationId);
-        uiLayer.style.display = "block";
-        storyText.style.opacity = 0;
-        menuTitle.innerHTML = "The Script Caught You";
-        menuTitle.style.background = "linear-gradient(90deg, #ff0055, #ff4757)";
-        menuTitle.style.webkitBackgroundClip = "text";
-        menuSubtitle.innerHTML = "Taking a drop is hard.<br>Starting over is harder.<br>Don't stop now.";
-        menuAction.innerText = "Try Again";
-    }
+        init() {
+            document.getElementById('creator-toggle').addEventListener('change', (e) => {
+                document.getElementById('creator-options').style.display = e.target.checked ? 'flex' : 'none';
+            });
 
-    // Init
-    resetGame();
-    drawBackground();
-    player.draw();
+            document.getElementById('btn-start').addEventListener('click', () => {
+                Config.name = document.getElementById('input-name').value || "Traveler";
+                
+                // Parse comma-separated words into an array
+                const rawPressure = document.getElementById('input-pressure').value;
+                if(rawPressure.trim() !== "") {
+                    Config.pressures = rawPressure.split(',').map(s => s.trim()).filter(s => s !== "");
+                } else {
+                    Config.pressures = ["The Script"];
+                }
+
+                Config.dream = document.getElementById('input-dream').value || "Freedom";
+                Config.isCreator = document.getElementById('creator-toggle').checked;
+                if(Config.isCreator) {
+                    Config.handle = document.getElementById('input-handle').value;
+                    Config.color = document.getElementById('input-color').value;
+                    document.documentElement.style.setProperty('--accent-color', Config.color);
+                }
+
+                this.setupPanel.classList.remove('active-panel');
+                this.hud.style.display = 'block';
+                Engine.start();
+            });
+
+            window.addEventListener('touchstart', (e) => { if(Engine.active) { e.preventDefault(); Engine.player.flap(); } }, {passive: false});
+            window.addEventListener('mousedown', () => { if(Engine.active) Engine.player.flap(); });
+
+            document.getElementById('btn-restart').addEventListener('click', () => {
+                this.gameOverPanel.classList.remove('active-panel');
+                this.hud.style.display = 'block';
+                Engine.start();
+            });
+
+            // ADDED: Main Menu Button Logic
+            document.getElementById('btn-menu').addEventListener('click', () => {
+                this.gameOverPanel.classList.remove('active-panel');
+                this.setupPanel.classList.add('active-panel');
+                ctx.clearRect(0,0,canvas.width,canvas.height); // clear screen
+            });
+
+            document.getElementById('btn-download').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = 'unscripted-journey.png';
+                link.href = document.getElementById('share-preview').src;
+                link.click();
+            });
+        },
+
+        updateStory(reset = false) {
+            const displayPressure = Config.pressures[0]; // Just use the first one for the background text
+            const stories = [
+                `Escaping ${displayPressure}...`,
+                `The pressure is heavy.`,
+                `You are not a script.`,
+                `Building towards ${Config.dream}.`,
+                `${Config.name} is finding the way.`
+            ];
+            this.storyDisplay.style.opacity = 0;
+            setTimeout(() => {
+                let idx = reset ? 0 : Math.min(Math.floor(Engine.score / 5), stories.length - 1);
+                this.storyDisplay.innerText = stories[idx];
+                this.storyDisplay.style.opacity = 1;
+            }, 500);
+        },
+
+        showGameOver() {
+            this.hud.style.display = 'none';
+            this.generateShareCanvas();
+            this.gameOverPanel.classList.add('active-panel');
+        },
+
+        generateShareCanvas() {
+            const sCanvas = document.createElement('canvas');
+            sCanvas.width = 1080; sCanvas.height = 1920;
+            const sCtx = sCanvas.getContext('2d');
+
+            let bgGrad = sCtx.createLinearGradient(0,0,0,sCanvas.height);
+            bgGrad.addColorStop(0, "#0a0a1a"); bgGrad.addColorStop(1, "#1a1a2e");
+            sCtx.fillStyle = bgGrad; sCtx.fillRect(0,0,sCanvas.width,sCanvas.height);
+
+            sCtx.fillStyle = Config.color;
+            sCtx.beginPath(); sCtx.arc(540, 500, 150, 0, Math.PI*2); sCtx.fill();
+            sCtx.filter = 'blur(100px)'; sCtx.fill(); sCtx.filter = 'none';
+
+            sCtx.textAlign = "center"; sCtx.fillStyle = "#ffffff";
+            sCtx.font = "bold 250px 'Space Grotesk', sans-serif";
+            sCtx.fillText(Engine.score, 540, 600);
+            
+            sCtx.font = "40px 'Space Grotesk', sans-serif";
+            sCtx.fillStyle = "rgba(255,255,255,0.7)";
+            
+            // Format the text properly so it doesn't break if you added 10 words
+            let pressureText = Config.pressures.length > 2 
+                ? `${Config.pressures.length} Pressures` 
+                : Config.pressures.join(" & ");
+
+            sCtx.fillText(`Dodged ${pressureText}.`, 540, 900);
+            sCtx.fillText(`Building towards ${Config.dream}.`, 540, 970);
+
+            sCtx.font = "bold 50px 'Space Grotesk', sans-serif";
+            sCtx.fillStyle = Config.color;
+            sCtx.fillText(Config.name.toUpperCase(), 540, 1400);
+
+            if(Config.isCreator && Config.handle) {
+                sCtx.font = "40px 'Space Grotesk', sans-serif";
+                sCtx.fillStyle = "#ffffff";
+                sCtx.fillText(`Play at link in bio: ${Config.handle}`, 540, 1750);
+            }
+
+            document.getElementById('share-preview').src = sCanvas.toDataURL('image/png');
+        }
+    };
+
+    UI.init();
 </script>
 </body>
 </html>
